@@ -79,12 +79,11 @@ class HomeAppState extends State<HomeApp> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) =>
-                      BleScanPage(), // Navega para a nova tela
+                  builder: (context) => BleScanPage(),
                 ),
               );
             },
-            child: Text('Iniciar Scaneamento BLE'),
+            child: const Text('Iniciar Scaneamento BLE'),
           ),
           Expanded(
             child: ListView.builder(

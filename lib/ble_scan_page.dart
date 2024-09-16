@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class BleScanPage extends StatefulWidget {
   @override
@@ -12,18 +13,47 @@ class _BleScanPageState extends State<BleScanPage> {
   @override
   void initState() {
     super.initState();
-    _startScan();
+    _checkPermissionsAndStartScan();
   }
 
-  void _startScan() async {
-    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+  Future<void> _checkPermissionsAndStartScan() async {
+    // Solicita permissões necessárias
+    var locationStatus = await Permission.location.status;
+    var bluetoothScanStatus = await Permission.bluetoothScan.status;
+    var bluetoothConnectStatus = await Permission.bluetoothConnect.status;
 
-    FlutterBluePlus.scanResults.listen((results) {
-      setState(() {
-        _scanResults.clear();
-        _scanResults.addAll(results);
+    if (!locationStatus.isGranted) {
+      await Permission.location.request();
+    }
+
+    if (!bluetoothScanStatus.isGranted) {
+      await Permission.bluetoothScan.request();
+    }
+
+    if (!bluetoothConnectStatus.isGranted) {
+      await Permission.bluetoothConnect.request();
+    }
+
+    // Verifica se todas as permissões foram concedidas
+    if (await Permission.location.isGranted &&
+        await Permission.bluetoothScan.isGranted &&
+        await Permission.bluetoothConnect.isGranted) {
+      // Inicia o escaneamento
+      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+
+      FlutterBluePlus.scanResults.listen((results) {
+        setState(() {
+          _scanResults.clear();
+          _scanResults.addAll(results);
+        });
+      }).onError((error) {
+        print('Erro ao escanear dispositivos: $error');
       });
-    });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Permissões necessárias não concedidas.')),
+      );
+    }
   }
 
   @override
@@ -47,7 +77,6 @@ class _BleScanPageState extends State<BleScanPage> {
                 final result = _scanResults[index];
                 return ListTile(
                   title: Text(result.device.name.isNotEmpty
-                      // ignore: deprecated_member_use
                       ? result.device.name
                       : 'Desconhecido'),
                   subtitle: Text(result.device.id.toString()),
